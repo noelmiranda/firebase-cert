@@ -1,0 +1,16 @@
+{
+  "files": {
+    "main.css": "/firebase-cert/static/css/main.e107542e.css",
+    "main.js": "/firebase-cert/static/js/main.5bdad4d3.js",
+    "static/media/pexels-pixabay-531880.jpg": "/firebase-cert/static/media/pexels-pixabay-531880.ccadb1b87df825d84dbe.jpg",
+    "static/media/pexels-steve-johnson-1509534.jpg": "/firebase-cert/static/media/pexels-steve-johnson-1509534.7ae71c02804e6f83e95a.jpg",
+    "static/media/pexels-miguel-á-padriñán-1591060.jpg": "/firebase-cert/static/media/pexels-miguel-á-padriñán-1591060.6465269b95c2236345c3.jpg",
+    "index.html": "/firebase-cert/index.html",
+    "main.e107542e.css.map": "/firebase-cert/static/css/main.e107542e.css.map",
+    "main.5bdad4d3.js.map": "/firebase-cert/static/js/main.5bdad4d3.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e107542e.css",
+    "static/js/main.5bdad4d3.js"
+  ]
+}
