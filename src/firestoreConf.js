@@ -33,7 +33,7 @@ export async function upload(file, currentUser, setLoading) {
     updateProfile(currentUser, {photoURL});
     
     setLoading(false);
-    alert("Uploaded file!");
+    alert("The file has been uploaded!");
   }
 
 
