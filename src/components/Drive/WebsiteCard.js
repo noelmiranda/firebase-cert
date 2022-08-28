@@ -8,7 +8,7 @@ export function WebsiteCard({ link }) {
   const navigate = useNavigate();
 
   const onDeleteLink = async (id) => {
-    if (window.confirm("are you sure you want to delete this link?")) {
+    if (window.confirm("Are you sure you want to delete this link?")) {
       await deleteWebsite(id);
       toast("Link Removed Successfully", {
         type: "error",
