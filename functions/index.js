@@ -1,11 +1,17 @@
 const functions = require("firebase-functions");
 const nodemailer = require('nodemailer');
+const mkdirp = require('mkdirp');
 const admin = require('firebase-admin');
 const { object } = require("firebase-functions/v1/storage");
 admin.initializeApp();
+const spawn = require('child-process-promise').spawn;
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
 
 const db = admin.firestore();
 
+//////// AUTHENTICATION//////////
 const gmailEmail = functions.config().gmail.email;
 const gmailPassword = functions.config().gmail.password;
 const mailTransport = nodemailer.createTransport({
@@ -18,7 +24,6 @@ const mailTransport = nodemailer.createTransport({
 
 const APP_NAME = 'L1 Firebase Certificate';
 
-//////// AUTHENTICATION//////////
 
 exports.welcomeUser = functions.auth.user().onCreate((user) => {
     const email = user.email; 
@@ -101,15 +106,80 @@ exports.updateWebsite = functions.firestore
     })
 
 //////// STORAGE//////////
-exports.fileAdded = functions.storage.bucket("fir-cert.appspot.com").object().onFinalize(async (object) => {
-    functions.logger.info("onFinalize event");
-    functions.logger.info(object.bucket);
-    functions.logger.info(object.name);
-    functions.logger.info(object.contentType);
+
+const THUMB_MAX_HEIGHT = 200;
+const THUMB_MAX_WIDTH = 200;
+
+const THUMB_PREFIX = 'thumb_';
+
+
+exports.generateThumbnail = functions.storage.bucket("fir-cert.appspot.com").object().onFinalize(async (object) => {
+
+  const filePath = object.name;
+  const contentType = object.contentType; 
+  const fileDir = path.dirname(filePath);
+  const fileName = path.basename(filePath);
+  const thumbFilePath = path.normalize(path.join(fileDir, `${THUMB_PREFIX}${fileName}`));
+  const tempLocalFile = path.join(os.tmpdir(), filePath);
+  const tempLocalDir = path.dirname(tempLocalFile);
+  const tempLocalThumbFile = path.join(os.tmpdir(), thumbFilePath);
+
+  if (!contentType.startsWith('image/')) {
+    return functions.logger.log('This is not an image.');
+  }
+
+  if (fileName.startsWith(THUMB_PREFIX)) {
+    return functions.logger.log('Already a Thumbnail.');
+  }
+
+  const bucket = admin.storage().bucket(object.bucket);
+  const file = bucket.file(filePath);
+  const thumbFile = bucket.file(thumbFilePath);
+  const metadata = {
+    contentType: contentType,
+  };
+  
+  await mkdirp(tempLocalDir)
+  await file.download({destination: tempLocalFile});
+  functions.logger.log('The file has been downloaded to', tempLocalFile);
+  await spawn('convert', [tempLocalFile, '-thumbnail', `${THUMB_MAX_WIDTH}x${THUMB_MAX_HEIGHT}>`, tempLocalThumbFile], {capture: ['stdout', 'stderr']});
+  functions.logger.log('Thumbnail created at', tempLocalThumbFile);
+
+
+  await bucket.upload(tempLocalThumbFile, {destination: thumbFilePath, metadata: metadata});
+  functions.logger.log('Thumbnail uploaded to Storage at', thumbFilePath);
+
+  fs.unlinkSync(tempLocalFile);
+  fs.unlinkSync(tempLocalThumbFile);
+
+  const results = await Promise.all([
+    thumbFile.getSignedUrl({
+      action: 'read',
+      expires: '03-01-2500',
+    }),
+    file.getSignedUrl({
+      action: 'read',
+      expires: '03-01-2500',
+    }),
+  ]);
+  functions.logger.log('Got Signed URLs.');
+  const thumbResult = results[0];
+  const originalResult = results[1];
+  const thumbFileUrl = thumbResult[0];
+  const fileUrl = originalResult[0];
+
+  await admin.database().ref('images').push({path: fileUrl, thumbnail: thumbFileUrl});
+  return functions.logger.log('Thumbnail URLs saved to database.');
 });
+
+
 exports.filedeleted = functions.storage.bucket("fir-cert.appspot.com").object().onDelete(async (object) => {
     functions.logger.info("onDelete event");
     functions.logger.info(object.bucket);
     functions.logger.info(object.name);
     functions.logger.info(object.contentType);
 });
+
+
+
+  
